@@ -1,25 +1,29 @@
-# Freight Rate Prediction Challenge
+# Freight Rate Prediction
 
-See `Freight_Rate_ML_Assessment.pdf` for the assessment instructions.
+Predicts freight load rates from route, equipment, weight, date, and market features.
 
-## What to do
+## Setup
 
-1. Train and validate your model using `data/train_test.csv`.
-2. Predict every load in `data/validation.csv`. Each load has a unique `load_id`.
-3. Fill the matching `predicted_rate` values in `data/validation_predictions_template.csv` and save it as `validation_predictions.csv`.
-4. Predict every row in `data/december_chart_inputs.csv` by filling its `predicted_rate` column.
-5. Install the scorer requirements and run:
+pip install -r requirements.txt
 
-```bash
-python -m pip install -r requirements.txt
+## Run
+
+1. Open `exploration.ipynb` and run all cells top to bottom. This:
+   - Cleans `data/train_test.csv` (fixes sign-flipped weights, imputes missing weight/market_index)
+   - Engineers features (date parts, one-hot equipment, target-encoded pickup/delivery)
+   - Trains a Gradient Boosting model on a log-transformed target
+   - Validates using a time-based split (train: Jan–Aug 2025, test: Sep–Oct 2025)
+   - Generates `validation_predictions.csv` and fills `data/december_chart_inputs.csv`
+
+2. Run the scorer:
+
 python score.py --predictions validation_predictions.csv --december-predictions data/december_chart_inputs.csv
-```
 
-The scorer validates both files and creates `scorer_results/candidate_december.png`.
+Output: `scorer_results/candidate_december.png`
 
-## Submit
+## Approach summary
 
-- GitHub repository containing your code, dependencies, and run instructions
-- `validation_predictions.csv`
-- PDF or DOCX report containing your validation, data split approach and `candidate_december.png`
-- 2-3 minute Loom link
+- **Model:** HistGradientBoostingRegressor (sklearn), trained on `log1p(posted_rate)`
+- **Why:** Tree-based boosting handles the non-linear, outlier-heavy rate distribution better than linear regression; log-target reduces the influence of a small number of very high-rate loads
+- **Validation:** Time-based split (not random) since the target task (validation.csv) is out-of-time prediction
+- **Data quality fixes:** sign-flip correction on `weight`, median imputation for `weight`/`market_index` (fit on train only, applied to test/validation)
